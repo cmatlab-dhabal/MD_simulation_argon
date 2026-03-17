@@ -1,0 +1,43 @@
+#####################################################################
+# min_argon.in — Energy minimization for Argon system
+# Energy in Kcal/Mol, time in fs, distance in angstroms.
+#                        DEFINE VARIABLES
+#####################################################################
+variable       out     equal   100      #timestep
+variable       step    equal   1        #fs        
+variable       dumptrj equal   50       #timestep
+variable       seed    equal   7545     #unitless
+
+#********************PREPARE THE SYSTEM*****************************
+boundary       p p p
+units          real
+atom_style     atomic
+atom_modify    map array sort 0 0
+
+read_data      iconf_argon.dat
+#**************************FF DETAILS*******************************
+# Argon LJ parameters
+# epsilon = 0.2385 kcal/mol
+# sigma   = 3.405 Å
+pair_style     lj/cut 10
+pair_coeff     * * 0.2385 3.405 10 
+#************************ Initialize *******************************
+neighbor       2.0 nsq
+neigh_modify   delay 0 every 1 check yes
+timestep       ${step}  
+
+#********************** Write Log File *****************************
+thermo         ${out}
+thermo_style   custom step temp atoms etotal ke pe press lx ly lz enthalpy density 
+thermo_modify  flush yes
+
+#*********************** Dump Trajectory ***************************
+dump           1 all custom ${dumptrj} coord.lammpstrj id type xs ys zs
+
+#********************Energy Minimization****************************
+minimize       1e-8 1e-10 100000 1000000
+min_style      cg
+
+#*********************Dump Coordinates******************************
+write_restart  restart_final.end
+write_data     minimized_argon.data

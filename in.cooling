@@ -1,0 +1,50 @@
+#####################################################################
+# npt_argon.in — Argon NPT coolinng
+# Energy in Kcal/Mol, time in fs, distance in angstroms.
+#                        DEFINE VARIABLES
+#####################################################################
+variable       P       equal   0.986923        #atm
+variable       Ti      equal   100.0             #K
+variable       Tf      equal   10.0             #K
+variable       out     equal   1000            #timestep
+variable       step    equal   1               #fs        
+variable       runtime equal   5000000         #step
+variable       dumptrj equal   ${runtime}/1000 #timestep
+variable       restart equal   ${runtime}/1    #timestep
+variable       seed    equal   7545            #unitless
+variable       Tdamp   equal   100             #timestep
+variable       Pdamp   equal   1000            #timestep
+
+#********************PREPARE THE SYSTEM*****************************
+boundary       p p p
+units          real
+atom_style     atomic
+atom_modify    map array sort 0 0
+
+#**************************FF DETAILS*******************************
+pair_style     lj/cut 10     #2.5σ≈2.5×3.405≈8.5 A˚
+read_data      equilibrated_argon.data  
+pair_coeff     * * 0.2385 3.405 
+
+#************************ Initialize *******************************
+neighbor       2.0 nsq
+neigh_modify   delay 0 every 1 check yes
+timestep       ${step}  
+
+#********************** Write Log File *****************************
+thermo         ${out}
+thermo_style   custom step atoms temp pe ke etotal press lx ly lz enthalpy density 
+thermo_modify  flush yes
+
+#************************ NPT simulation ***************************
+fix            1 all npt temp ${Ti} ${Tf} ${Tdamp} iso $P $P ${Pdamp}
+
+#*********************** Dump Trajectory ***************************
+dump           1 all custom ${dumptrj} coord.lammpstrj id type xs ys zs
+dump_modify    1 sort id
+restart        ${restart} ${restart}.restart
+run            ${runtime}
+
+#********************** Output files ******************************
+write_restart  restart_final_${Tf}K.end
+write_data     final_conf${Tf}K.data
